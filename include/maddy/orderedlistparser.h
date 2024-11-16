@@ -31,11 +31,13 @@ public:
    *
    * @method
    * @param {std::function<void(std::string&)>} parseLineCallback
-   * @param {std::function<std::shared_ptr<BlockParser>(const std::string& line)>} getBlockParserForLineCallback
+   * @param {std::function<std::shared_ptr<BlockParser>(const std::string&
+   * line)>} getBlockParserForLineCallback
    */
-   OrderedListParser(
+  OrderedListParser(
     std::function<void(std::string&)> parseLineCallback,
-    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
+    std::function<std::shared_ptr<BlockParser>(const std::string& line)>
+      getBlockParserForLineCallback
   )
     : BlockParser(parseLineCallback, getBlockParserForLineCallback)
     , isStarted(false)
@@ -51,8 +53,7 @@ public:
    * @param {const std::string&} line
    * @return {bool}
    */
-  static bool
-  IsStartingLine(const std::string& line)
+  static bool IsStartingLine(const std::string& line)
   {
     static std::regex re("^1\\. .*");
     return std::regex_match(line, re);
@@ -64,34 +65,21 @@ public:
    * @method
    * @return {bool}
    */
-  bool
-  IsFinished() const override
-  {
-    return this->isFinished;
-  }
+  bool IsFinished() const override { return this->isFinished; }
 
 protected:
-  bool
-  isInlineBlockAllowed() const override
-  {
-    return true;
-  }
+  bool isInlineBlockAllowed() const override { return true; }
 
-  bool
-  isLineParserAllowed() const override
-  {
-    return true;
-  }
+  bool isLineParserAllowed() const override { return true; }
 
-  void
-  parseBlock(std::string& line) override
+  void parseBlock(std::string& line) override
   {
     bool isStartOfNewListItem = this->isStartOfNewListItem(line);
     uint32_t indentation = getIndentationWidth(line);
 
-    static std::regex orderedlineRegex("^[1-9]+[0-9]*\\. ");
+    static std::regex orderedlineRegex(R"(^[1-9]+[0-9]*\. )");
     line = std::regex_replace(line, orderedlineRegex, "");
-    static std::regex unorderedlineRegex("^\\* ");
+    static std::regex unorderedlineRegex(R"(^\* )");
     line = std::regex_replace(line, unorderedlineRegex, "");
 
     if (!this->isStarted)
@@ -107,12 +95,9 @@ protected:
       return;
     }
 
-    if (
-      line.empty() ||
-      line.find("</li><li>") != std::string::npos ||
-      line.find("</li></ol>") != std::string::npos ||
-      line.find("</li></ul>") != std::string::npos
-    )
+    if (line.empty() || line.find("</li><li>") != std::string::npos ||
+        line.find("</li></ol>") != std::string::npos ||
+        line.find("</li></ul>") != std::string::npos)
     {
       line = "</li></ol>" + line;
       this->isFinished = true;
@@ -129,10 +114,9 @@ private:
   bool isStarted;
   bool isFinished;
 
-  bool
-  isStartOfNewListItem(const std::string& line) const
+  bool isStartOfNewListItem(const std::string& line) const
   {
-    static std::regex re("^(?:[1-9]+[0-9]*\\. |\\* ).*");
+    static std::regex re(R"(^(?:[1-9]+[0-9]*\. |\* ).*)");
     return std::regex_match(line, re);
   }
 }; // class OrderedListParser

@@ -7,8 +7,8 @@
 // -----------------------------------------------------------------------------
 
 #include <functional>
-#include <string>
 #include <regex>
+#include <string>
 
 #include "maddy/blockparser.h"
 
@@ -47,11 +47,13 @@ public:
    *
    * @method
    * @param {std::function<void(std::string&)>} parseLineCallback
-   * @param {std::function<std::shared_ptr<BlockParser>(const std::string& line)>} getBlockParserForLineCallback
+   * @param {std::function<std::shared_ptr<BlockParser>(const std::string&
+   * line)>} getBlockParserForLineCallback
    */
-   CodeBlockParser(
+  CodeBlockParser(
     std::function<void(std::string&)> parseLineCallback,
-    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
+    std::function<std::shared_ptr<BlockParser>(const std::string& line)>
+      getBlockParserForLineCallback
   )
     : BlockParser(parseLineCallback, getBlockParserForLineCallback)
     , isStarted(false)
@@ -71,10 +73,9 @@ public:
    * @param {const std::string&} line
    * @return {bool}
    */
-  static bool
-  IsStartingLine(const std::string& line)
+  static bool IsStartingLine(const std::string& line)
   {
-    static std::regex re("^(?:`){3}$");
+    static std::regex re("^(?:`){3}(.*)$");
     return std::regex_match(line, re);
   }
 
@@ -84,27 +85,14 @@ public:
    * @method
    * @return {bool}
    */
-  bool
-  IsFinished() const override
-  {
-    return this->isFinished;
-  }
+  bool IsFinished() const override { return this->isFinished; }
 
 protected:
-  bool
-  isInlineBlockAllowed() const override
-  {
-    return false;
-  }
+  bool isInlineBlockAllowed() const override { return false; }
 
-  bool
-  isLineParserAllowed() const override
-  {
-    return false;
-  }
+  bool isLineParserAllowed() const override { return false; }
 
-  void
-  parseBlock(std::string& line) override
+  void parseBlock(std::string& line) override
   {
     if (line == "```")
     {
@@ -122,6 +110,13 @@ protected:
         this->isStarted = false;
         return;
       }
+    }
+    else if (!this->isStarted && line.substr(0, 3) == "```")
+    {
+      line = "<pre class=\"" + line.substr(3) + "\"><code>\n";
+      this->isStarted = true;
+      this->isFinished = false;
+      return;
     }
 
     line += "\n";

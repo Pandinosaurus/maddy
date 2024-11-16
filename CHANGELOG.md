@@ -14,9 +14,33 @@ maddy uses [semver versioning](https://semver.org/).
 
 ## Upcoming
 
+* ![**CHANGED**](https://img.shields.io/badge/-CHANGED-%23e90) Updated google test to v1.15.0.
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) clang-format
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) automatic update dependencies ci
+
+## version 1.3.0 2023-08-26
+
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) Headlines can have inline parsing now. It is on by default, but can be disabled by config.
+
+## version 1.2.1 2023-08-06
+
+* ![**FIXED**](https://img.shields.io/badge/-FIXED-%23090) Parser.h version() method clashing with VERSION defines at global scope
+
+## version 1.2.0 2023-07-27
+
 * ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) Added Changelog
 * ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) Added contribution guideline
-* ?
+* ![**CHANGED**](https://img.shields.io/badge/-CHANGED-%23e90) updated cmake minimum required version to 3.25
+* ![**CHANGED**](https://img.shields.io/badge/-CHANGED-%23e90) gtest is now loaded via cmake and not a git submodule any longer - updated gtest version to 1.13.0
+* ![**CHANGED**](https://img.shields.io/badge/-CHANGED-%23e90) tests are only run if the cmake option `MADDY_BUILD_WITH_TESTS` is on, moved test cmake code to the `tests` subfolder
+* ![**REMOVED**](https://img.shields.io/badge/-REMOVED-%23900) travis CI and appveyor
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) GitHub workflow for tests
+* ![**DEPRECATED**](https://img.shields.io/badge/-DEPRECATED-%23666) config flags `isEmphasizedParserEnabled` and `isHTMLWrappedInParagraph`
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) config flag `enabledParsers` to en-/disable each parser separately
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) class attribute to code blocks if there is text after the three backticks like ` ```cpp`
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) optional support for latex blocks - it's off by default
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) version info to the parser class
+* ![**ADDED**](https://img.shields.io/badge/-ADDED-%23099) GitHub workflow for release, so that one can include maddy easier via cmake's `FetchContent`
 
 ## version 1.1.2 2020-10-04
 

@@ -31,11 +31,13 @@ public:
    *
    * @method
    * @param {std::function<void(std::string&)>} parseLineCallback
-   * @param {std::function<std::shared_ptr<BlockParser>(const std::string& line)>} getBlockParserForLineCallback
+   * @param {std::function<std::shared_ptr<BlockParser>(const std::string&
+   * line)>} getBlockParserForLineCallback
    */
-   ChecklistParser(
+  ChecklistParser(
     std::function<void(std::string&)> parseLineCallback,
-    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
+    std::function<std::shared_ptr<BlockParser>(const std::string& line)>
+      getBlockParserForLineCallback
   )
     : BlockParser(parseLineCallback, getBlockParserForLineCallback)
     , isStarted(false)
@@ -51,10 +53,9 @@ public:
    * @param {const std::string&} line
    * @return {bool}
    */
-  static bool
-  IsStartingLine(const std::string& line)
+  static bool IsStartingLine(const std::string& line)
   {
-    static std::regex re("^- \\[[x| ]\\] .*");
+    static std::regex re(R"(^- \[[x| ]\] .*)");
     return std::regex_match(line, re);
   }
 
@@ -64,27 +65,14 @@ public:
    * @method
    * @return {bool}
    */
-  bool
-  IsFinished() const override
-  {
-    return this->isFinished;
-  }
+  bool IsFinished() const override { return this->isFinished; }
 
 protected:
-  bool
-  isInlineBlockAllowed() const override
-  {
-    return true;
-  }
+  bool isInlineBlockAllowed() const override { return true; }
 
-  bool
-  isLineParserAllowed() const override
-  {
-    return true;
-  }
+  bool isLineParserAllowed() const override { return true; }
 
-  void
-  parseBlock(std::string& line) override
+  void parseBlock(std::string& line) override
   {
     bool isStartOfNewListItem = IsStartingLine(line);
     uint32_t indentation = getIndentationWidth(line);
@@ -92,12 +80,13 @@ protected:
     static std::regex lineRegex("^(- )");
     line = std::regex_replace(line, lineRegex, "");
 
-    static std::regex emptyBoxRegex("^\\[ \\]");
+    static std::regex emptyBoxRegex(R"(^\[ \])");
     static std::string emptyBoxReplacement = "<input type=\"checkbox\"/>";
     line = std::regex_replace(line, emptyBoxRegex, emptyBoxReplacement);
 
-    static std::regex boxRegex("^\\[x\\]");
-    static std::string boxReplacement = "<input type=\"checkbox\" checked=\"checked\"/>";
+    static std::regex boxRegex(R"(^\[x\])");
+    static std::string boxReplacement =
+      "<input type=\"checkbox\" checked=\"checked\"/>";
     line = std::regex_replace(line, boxRegex, boxReplacement);
 
     if (!this->isStarted)
@@ -113,11 +102,9 @@ protected:
       return;
     }
 
-    if (
-      line.empty() ||
-      line.find("</label></li><li><label>") != std::string::npos ||
-      line.find("</label></li></ul>") != std::string::npos
-    )
+    if (line.empty() ||
+        line.find("</label></li><li><label>") != std::string::npos ||
+        line.find("</label></li></ul>") != std::string::npos)
     {
       line = "</label></li></ul>" + line;
       this->isFinished = true;

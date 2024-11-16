@@ -6,8 +6,8 @@
 
 // -----------------------------------------------------------------------------
 
-#include <memory>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "maddy/parserconfig.h"
@@ -18,6 +18,7 @@
 #include "maddy/headlineparser.h"
 #include "maddy/horizontallineparser.h"
 #include "maddy/htmlparser.h"
+#include "maddy/latexblockparser.h"
 #include "maddy/orderedlistparser.h"
 #include "maddy/paragraphparser.h"
 #include "maddy/quoteparser.h"
@@ -51,23 +52,85 @@ class Parser
 {
 public:
   /**
+   * Version info
+   *
+   * Check https://github.com/progsource/maddy/blob/master/CHANGELOG.md
+   * for the changelog.
+   */
+  static const std::string& version()
+  {
+    static const std::string v = "1.3.0";
+    return v;
+  }
+
+  /**
    * ctor
    *
    * Initializes all `LineParser`
    *
    * @method
    */
-  Parser(std::shared_ptr<ParserConfig> config = nullptr)
-    : config(config)
-    , breakLineParser(std::make_shared<BreakLineParser>())
-    , emphasizedParser(std::make_shared<EmphasizedParser>())
-    , imageParser(std::make_shared<ImageParser>())
-    , inlineCodeParser(std::make_shared<InlineCodeParser>())
-    , italicParser(std::make_shared<ItalicParser>())
-    , linkParser(std::make_shared<LinkParser>())
-    , strikeThroughParser(std::make_shared<StrikeThroughParser>())
-    , strongParser(std::make_shared<StrongParser>())
-  {}
+  Parser(std::shared_ptr<ParserConfig> config = nullptr) : config(config)
+  {
+    // deprecated backward compatibility
+    // will be removed in 1.4.0 latest including the booleans
+    if (this->config && !this->config->isEmphasizedParserEnabled)
+    {
+      this->config->enabledParsers &= ~maddy::types::EMPHASIZED_PARSER;
+    }
+    if (this->config && !this->config->isHTMLWrappedInParagraph)
+    {
+      this->config->enabledParsers |= maddy::types::HTML_PARSER;
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::BREAKLINE_PARSER) != 0)
+    {
+      this->breakLineParser = std::make_shared<BreakLineParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::EMPHASIZED_PARSER) != 0)
+    {
+      this->emphasizedParser = std::make_shared<EmphasizedParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::IMAGE_PARSER) != 0)
+    {
+      this->imageParser = std::make_shared<ImageParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::INLINE_CODE_PARSER) != 0)
+    {
+      this->inlineCodeParser = std::make_shared<InlineCodeParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::ITALIC_PARSER) != 0)
+    {
+      this->italicParser = std::make_shared<ItalicParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::LINK_PARSER) != 0)
+    {
+      this->linkParser = std::make_shared<LinkParser>();
+    }
+
+    if (!this->config || (this->config->enabledParsers &
+                          maddy::types::STRIKETHROUGH_PARSER) != 0)
+    {
+      this->strikeThroughParser = std::make_shared<StrikeThroughParser>();
+    }
+
+    if (!this->config ||
+        (this->config->enabledParsers & maddy::types::STRONG_PARSER) != 0)
+    {
+      this->strongParser = std::make_shared<StrongParser>();
+    }
+  }
 
   /**
    * Parse
@@ -76,8 +139,7 @@ public:
    * @param {const std::istream&} markdown
    * @return {std::string} HTML
    */
-  std::string
-  Parse(std::istream& markdown) const
+  std::string Parse(std::istream& markdown) const
   {
     std::string result = "";
     std::shared_ptr<BlockParser> currentBlockParser = nullptr;
@@ -128,111 +190,159 @@ private:
   std::shared_ptr<StrongParser> strongParser;
 
   // block parser have to run before
-  void
-  runLineParser(std::string& line) const
+  void runLineParser(std::string& line) const
   {
     // Attention! ImageParser has to be before LinkParser
-    this->imageParser->Parse(line);
-    this->linkParser->Parse(line);
+    if (this->imageParser)
+    {
+      this->imageParser->Parse(line);
+    }
+
+    if (this->linkParser)
+    {
+      this->linkParser->Parse(line);
+    }
 
     // Attention! StrongParser has to be before EmphasizedParser
-    this->strongParser->Parse(line);
+    if (this->strongParser)
+    {
+      this->strongParser->Parse(line);
+    }
 
-    if (!this->config || this->config->isEmphasizedParserEnabled)
+    if (this->emphasizedParser)
     {
       this->emphasizedParser->Parse(line);
     }
 
-    this->strikeThroughParser->Parse(line);
+    if (this->strikeThroughParser)
+    {
+      this->strikeThroughParser->Parse(line);
+    }
 
-    this->inlineCodeParser->Parse(line);
+    if (this->inlineCodeParser)
+    {
+      this->inlineCodeParser->Parse(line);
+    }
 
-    this->italicParser->Parse(line);
+    if (this->italicParser)
+    {
+      this->italicParser->Parse(line);
+    }
 
-    this->breakLineParser->Parse(line);
+    if (this->breakLineParser)
+    {
+      this->breakLineParser->Parse(line);
+    }
   }
 
-  std::shared_ptr<BlockParser>
-  getBlockParserForLine(const std::string& line) const
+  std::shared_ptr<BlockParser> getBlockParserForLine(const std::string& line
+  ) const
   {
     std::shared_ptr<BlockParser> parser;
 
-    if (maddy::CodeBlockParser::IsStartingLine(line))
+    if ((!this->config || (this->config->enabledParsers &
+                           maddy::types::CODE_BLOCK_PARSER) != 0) &&
+        maddy::CodeBlockParser::IsStartingLine(line))
     {
-      parser = std::make_shared<maddy::CodeBlockParser>(
-        nullptr,
-        nullptr
-      );
+      parser = std::make_shared<maddy::CodeBlockParser>(nullptr, nullptr);
     }
-    else if (maddy::HeadlineParser::IsStartingLine(line))
+    else if (this->config &&
+             (this->config->enabledParsers & maddy::types::LATEX_BLOCK_PARSER
+             ) != 0 &&
+             maddy::LatexBlockParser::IsStartingLine(line))
     {
-      parser = std::make_shared<maddy::HeadlineParser>(
-        nullptr,
-        nullptr
-      );
+      parser = std::make_shared<LatexBlockParser>(nullptr, nullptr);
     }
-    else if (maddy::HorizontalLineParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::HEADLINE_PARSER) != 0) &&
+             maddy::HeadlineParser::IsStartingLine(line))
     {
-      parser = std::make_shared<maddy::HorizontalLineParser>(
-        nullptr,
-        nullptr
-      );
+      if (!this->config || this->config->isHeadlineInlineParsingEnabled)
+      {
+        parser = std::make_shared<maddy::HeadlineParser>(
+          [this](std::string& line) { this->runLineParser(line); },
+          nullptr,
+          true
+        );
+      }
+      else
+      {
+        parser =
+          std::make_shared<maddy::HeadlineParser>(nullptr, nullptr, false);
+      }
     }
-    else if (maddy::QuoteParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::HORIZONTAL_LINE_PARSER) != 0) &&
+             maddy::HorizontalLineParser::IsStartingLine(line))
+    {
+      parser = std::make_shared<maddy::HorizontalLineParser>(nullptr, nullptr);
+    }
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::QUOTE_PARSER) != 0) &&
+             maddy::QuoteParser::IsStartingLine(line))
     {
       parser = std::make_shared<maddy::QuoteParser>(
-        [this](std::string& line){ this->runLineParser(line); },
-        [this](const std::string& line){ return this->getBlockParserForLine(line); }
+        [this](std::string& line) { this->runLineParser(line); },
+        [this](const std::string& line)
+        { return this->getBlockParserForLine(line); }
       );
     }
-    else if (maddy::TableParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::TABLE_PARSER) != 0) &&
+             maddy::TableParser::IsStartingLine(line))
     {
       parser = std::make_shared<maddy::TableParser>(
-        [this](std::string& line){ this->runLineParser(line); },
-        nullptr
+        [this](std::string& line) { this->runLineParser(line); }, nullptr
       );
     }
-    else if (maddy::ChecklistParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::CHECKLIST_PARSER) != 0) &&
+             maddy::ChecklistParser::IsStartingLine(line))
     {
       parser = this->createChecklistParser();
     }
-    else if (maddy::OrderedListParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::ORDERED_LIST_PARSER) != 0) &&
+             maddy::OrderedListParser::IsStartingLine(line))
     {
       parser = this->createOrderedListParser();
     }
-    else if (maddy::UnorderedListParser::IsStartingLine(line))
+    else if ((!this->config || (this->config->enabledParsers &
+                                maddy::types::UNORDERED_LIST_PARSER) != 0) &&
+             maddy::UnorderedListParser::IsStartingLine(line))
     {
       parser = this->createUnorderedListParser();
     }
-    else if (
-      this->config &&
-      !this->config->isHTMLWrappedInParagraph &&
-      maddy::HtmlParser::IsStartingLine(line)
-    )
+    else if (this->config &&
+             (this->config->enabledParsers & maddy::types::HTML_PARSER) != 0 &&
+             maddy::HtmlParser::IsStartingLine(line))
     {
       parser = std::make_shared<maddy::HtmlParser>(nullptr, nullptr);
     }
     else if (maddy::ParagraphParser::IsStartingLine(line))
     {
       parser = std::make_shared<maddy::ParagraphParser>(
-        [this](std::string& line){ this->runLineParser(line); },
-        nullptr
+        [this](std::string& line) { this->runLineParser(line); },
+        nullptr,
+        (!this->config ||
+         (this->config->enabledParsers & maddy::types::PARAGRAPH_PARSER) != 0)
       );
     }
 
     return parser;
   }
 
-  std::shared_ptr<BlockParser>
-  createChecklistParser() const
+  std::shared_ptr<BlockParser> createChecklistParser() const
   {
     return std::make_shared<maddy::ChecklistParser>(
-      [this](std::string& line){ this->runLineParser(line); },
+      [this](std::string& line) { this->runLineParser(line); },
       [this](const std::string& line)
       {
         std::shared_ptr<BlockParser> parser;
 
-        if (maddy::ChecklistParser::IsStartingLine(line))
+        if ((!this->config || (this->config->enabledParsers &
+                               maddy::types::CHECKLIST_PARSER) != 0) &&
+            maddy::ChecklistParser::IsStartingLine(line))
         {
           parser = this->createChecklistParser();
         }
@@ -242,20 +352,24 @@ private:
     );
   }
 
-  std::shared_ptr<BlockParser>
-  createOrderedListParser() const
+  std::shared_ptr<BlockParser> createOrderedListParser() const
   {
     return std::make_shared<maddy::OrderedListParser>(
-      [this](std::string& line){ this->runLineParser(line); },
+      [this](std::string& line) { this->runLineParser(line); },
       [this](const std::string& line)
       {
         std::shared_ptr<BlockParser> parser;
 
-        if (maddy::OrderedListParser::IsStartingLine(line))
+        if ((!this->config || (this->config->enabledParsers &
+                               maddy::types::ORDERED_LIST_PARSER) != 0) &&
+            maddy::OrderedListParser::IsStartingLine(line))
         {
           parser = this->createOrderedListParser();
         }
-        else if (maddy::UnorderedListParser::IsStartingLine(line))
+        else if ((!this->config || (this->config->enabledParsers &
+                                    maddy::types::UNORDERED_LIST_PARSER) != 0
+                 ) &&
+                 maddy::UnorderedListParser::IsStartingLine(line))
         {
           parser = this->createUnorderedListParser();
         }
@@ -265,20 +379,24 @@ private:
     );
   }
 
-  std::shared_ptr<BlockParser>
-  createUnorderedListParser() const
+  std::shared_ptr<BlockParser> createUnorderedListParser() const
   {
     return std::make_shared<maddy::UnorderedListParser>(
-      [this](std::string& line){ this->runLineParser(line); },
+      [this](std::string& line) { this->runLineParser(line); },
       [this](const std::string& line)
       {
         std::shared_ptr<BlockParser> parser;
 
-        if (maddy::OrderedListParser::IsStartingLine(line))
+        if ((!this->config || (this->config->enabledParsers &
+                               maddy::types::ORDERED_LIST_PARSER) != 0) &&
+            maddy::OrderedListParser::IsStartingLine(line))
         {
           parser = this->createOrderedListParser();
         }
-        else if (maddy::UnorderedListParser::IsStartingLine(line))
+        else if ((!this->config || (this->config->enabledParsers &
+                                    maddy::types::UNORDERED_LIST_PARSER) != 0
+                 ) &&
+                 maddy::UnorderedListParser::IsStartingLine(line))
         {
           parser = this->createUnorderedListParser();
         }

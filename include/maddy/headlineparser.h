@@ -7,8 +7,8 @@
 // -----------------------------------------------------------------------------
 
 #include <functional>
-#include <string>
 #include <regex>
+#include <string>
 
 #include "maddy/blockparser.h"
 
@@ -53,13 +53,17 @@ public:
    *
    * @method
    * @param {std::function<void(std::string&)>} parseLineCallback
-   * @param {std::function<std::shared_ptr<BlockParser>(const std::string& line)>} getBlockParserForLineCallback
+   * @param {std::function<std::shared_ptr<BlockParser>(const std::string&
+   * line)>} getBlockParserForLineCallback
    */
   HeadlineParser(
     std::function<void(std::string&)> parseLineCallback,
-    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
+    std::function<std::shared_ptr<BlockParser>(const std::string& line)>
+      getBlockParserForLineCallback,
+    bool isInlineParserAllowed = true
   )
     : BlockParser(parseLineCallback, getBlockParserForLineCallback)
+    , isInlineParserAllowed(isInlineParserAllowed)
   {}
 
   /**
@@ -71,8 +75,7 @@ public:
    * @param {const std::string&} line
    * @return {bool}
    */
-  static bool
-  IsStartingLine(const std::string& line)
+  static bool IsStartingLine(const std::string& line)
   {
     static std::regex re("^(?:#){1,6} (.*)");
     return std::regex_match(line, re);
@@ -87,43 +90,33 @@ public:
    * @method
    * @return {bool}
    */
-  bool
-  IsFinished() const override
-  {
-    return true;
-  }
+  bool IsFinished() const override { return true; }
 
 protected:
-  bool
-  isInlineBlockAllowed() const override
+  bool isInlineBlockAllowed() const override { return false; }
+
+  bool isLineParserAllowed() const override
   {
-    return false;
+    return this->isInlineParserAllowed;
   }
 
-  bool
-  isLineParserAllowed() const override
-  {
-    return false;
-  }
-
-  void
-  parseBlock(std::string& line) override
+  void parseBlock(std::string& line) override
   {
     static std::vector<std::regex> hlRegex = {
-      std::regex("^# (.*)")
-      , std::regex("^(?:#){2} (.*)")
-      , std::regex("^(?:#){3} (.*)")
-      , std::regex("^(?:#){4} (.*)")
-      , std::regex("^(?:#){5} (.*)")
-      , std::regex("^(?:#){6} (.*)")
+      std::regex("^# (.*)"),
+      std::regex("^(?:#){2} (.*)"),
+      std::regex("^(?:#){3} (.*)"),
+      std::regex("^(?:#){4} (.*)"),
+      std::regex("^(?:#){5} (.*)"),
+      std::regex("^(?:#){6} (.*)")
     };
     static std::vector<std::string> hlReplacement = {
-      "<h1>$1</h1>"
-      , "<h2>$1</h2>"
-      , "<h3>$1</h3>"
-      , "<h4>$1</h4>"
-      , "<h5>$1</h5>"
-      , "<h6>$1</h6>"
+      "<h1>$1</h1>",
+      "<h2>$1</h2>",
+      "<h3>$1</h3>",
+      "<h4>$1</h4>",
+      "<h5>$1</h5>",
+      "<h6>$1</h6>"
     };
 
     for (uint8_t i = 0; i < 6; ++i)
@@ -131,6 +124,9 @@ protected:
       line = std::regex_replace(line, hlRegex[i], hlReplacement[i]);
     }
   }
+
+private:
+  bool isInlineParserAllowed;
 }; // class HeadlineParser
 
 // -----------------------------------------------------------------------------
